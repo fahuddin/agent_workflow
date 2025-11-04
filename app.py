@@ -18,7 +18,7 @@ class Step(BaseModel):
     description: str = Field(..., min_length=5, description="The step executed.")
     tool: Optional[str] = Field(None, description="The tool used in this step, if any.")
     args: Optional[dict[str]] = Field(None, description="Arguments for the tool, if any.")
-    
+
 
 
 class Task(BaseModel):
@@ -28,6 +28,25 @@ class Task(BaseModel):
 class BuildRequestResponse(BaseModel):
     goal: str
     workflow: list[Task]
+
+class StepOutput(BaseModel):
+    status: str 
+    output: Optional[str] = None
+    error: Optional[str] = None
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    tool_used: Optional[str] = None
+    tool_args: Optional[dict[str]] = None
+
+class TaskResult(BaseModel):
+    title: str
+    step_results: list[StepOutput]
+
+
+class ExecutionResult(BaseModel):
+    goal: str
+    results: list[TaskResult]
+    status: str  # DONE | FAILED
 
 @app.get("/ping")
 async def ping():
