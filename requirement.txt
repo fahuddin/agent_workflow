@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+openai
+pydantic
+pydantic-settings
+python-dotenv
+httpx
+psycopg[binary]
+SQLAlchemy>=2.0
+alembic
+celery[redis]
