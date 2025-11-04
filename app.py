@@ -170,6 +170,40 @@ SYSTEM = (
     '[{"title": string, "steps": [{"description": string}]}]}'
 )
 
+async def run_step(step: Step) -> StepOutput:
+    started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        if step.tool == "http_get":
+            url = step.args.get("url")
+            result = await tool_http_get(url)
+            output = f"Fetched {result['type']} data."
+        elif step.tool == "python_eval":
+            expr = step.args.get("expression")
+            result = await tool_python_eval(expr)
+            output = f"Evaluated expression with result: {result['result']}"
+        else:
+            output = "No tool executed."
+        finished_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        return StepOutput(
+            status="SUCCESS",
+            output=output,
+            started_at=started_at,
+            finished_at=finished_at,
+            tool_used=step.tool,
+            tool_args=step.args
+        )
+    except Exception as e:
+        finished_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        return StepOutput(
+            status="FAILED",
+            error=str(e),
+            started_at=started_at,
+            finished_at=finished_at,
+            tool_used=step.tool,
+            tool_args=step.args
+        )
+
+
 @app.post("/build-workflow", response_model=BuildRequestResponse)
 async def build_workflow(request: BuildRequest):
     user = f"Build a workflow to achieve the goal: {request.goal}. " \
