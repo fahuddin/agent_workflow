@@ -1,7 +1,7 @@
 # app.py
 import os, json
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Optional
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
@@ -16,6 +16,10 @@ class BuildRequest(BaseModel):
 
 class Step(BaseModel):
     description: str = Field(..., min_length=5, description="The step executed.")
+    tool: Optional[str] = Field(None, description="The tool used in this step, if any.")
+    args: Optional[dict[str]] = Field(None, description="Arguments for the tool, if any.")
+    
+
 
 class Task(BaseModel):
     title: str = Field(..., min_length=5, description="The title of the task.")
