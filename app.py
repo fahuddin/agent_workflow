@@ -202,6 +202,26 @@ async def run_step(step: Step) -> StepOutput:
             tool_used=step.tool,
             tool_args=step.args
         )
+    
+
+@app.post("/step-execute", response_model=StepOutput)
+async def step_execute(step: Step):
+    try:
+        step = Step.model_validate(step)
+        return await run_step(step)
+    except ValidationError as ve:
+        raise HTTPException(status_code=400, detail=f"Invalid step data: {ve}") from ve
+
+@app.post("/task-execute", response_model=TaskResult)
+async def task_execute(task: Task):
+    step_results = []
+    for step in task.steps:
+        result = await run_step(step)
+        step_results.append(result)
+        if result.status != "SUCCESS":
+            break  # Stop on first failure
+    return TaskResult(title=task.title, step_results=step_results)
+
 
 
 @app.post("/build-workflow", response_model=BuildRequestResponse)
