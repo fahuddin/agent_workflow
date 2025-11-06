@@ -176,14 +176,16 @@ SYSTEM = (
 
 async def run_step(step: Step) -> StepOutput:
     started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    args = step.args or {}
+    tool = step.tool or None
     try:
-        if args.get("tool") == "http_get":
-            url = step.args.get("url")
+        if tool == "http_get":
+            url = step.args.get("url") if step.args else None
+            if not url or not isinstance(url, str) or not url.startswith(('http://', 'https://')):
+                raise ValueError("Invalid URL provided.")
             result = await tool_http_get(url)
             output = f"Fetched {result['type']} data."
-        elif args.get("tool") == "python_eval":
-            expr = step.args.get("expression")
+        elif tool  == "python_eval":
+            expr = step.args.get("expr") if isinstance(step.args, dict) else step.args
             result = await tool_python_eval(expr)
             output = f"Evaluated expression with result: {result['result']}"
         else:
@@ -195,13 +197,13 @@ async def run_step(step: Step) -> StepOutput:
             started_at=started_at,
             finished_at=finished_at,
             tool_used=step.tool,
-            tool_args=step.args
+            tool_args=step.args or {}
         )
     except Exception as e:
         finished_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         return StepOutput(
             status="FAILED",
-            error=str(e),
+            error=redact_pii(str(e)),
             started_at=started_at,
             finished_at=finished_at,
             tool_used=step.tool,
