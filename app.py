@@ -221,15 +221,31 @@ async def step_execute(step: Step):
 
 @app.post("/task-execute", response_model=ExecutionResult)
 async def task_execute(plan: BuildRequestResponse):
+    """
+    Execute all tasks in the provided workflow plan sequentially.
+    Args:
+        plan (BuildRequestResponse): The workflow plan containing tasks and steps.
+    Returns:
+        ExecutionResult: The result of executing all tasks, including step outputs and overall status.
+    """
     task_results = []
-    step_results = []
-    for step in plan.workflow:
-        result = await run_step(step)
-        step_results.append(result)
-        if result.status != "SUCCESS":
-            break  # Stop on first failure
-        task_results.append(TaskResult(title=step.title, step_results=step_results))
-    return ExecutionResult(goal=plan.goal, workflow=task_results)
+    for task in plan.workflow:
+        step_results = []
+        for step in task.steps:
+            result = await run_step(step)
+            step_results.append(result)
+            if result.status != "SUCCESS":
+                break  # Stop on first failure
+        task_results.append(TaskResult(title=task.title, step_results=step_results))
+    overall_status = "DONE"
+    for task_result in task_results:
+        for step_result in task_result.step_results:
+            if step_result.status != "SUCCESS":
+                overall_status = "FAILED"
+                break
+        if overall_status == "FAILED":
+            break
+    return ExecutionResult(goal=plan.goal, results=task_results, status=overall_status)
 
 
 
