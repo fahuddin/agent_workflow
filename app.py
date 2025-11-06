@@ -5,7 +5,7 @@ import re
 import time
 import asyncio
 import ast
-from typing import Any, AsyncGenerator, Callable, Dict, Optional
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 
 import httpx
 from fastapi import FastAPI, UploadFile, HTTPException
@@ -26,20 +26,21 @@ class BuildRequest(BaseModel):
 class Step(BaseModel):
     description: str = Field(..., min_length=5, description="The step executed.")
     tool: Optional[str] = Field(None, description="The tool used in this step, if any.")
-    args: Optional[dict[str]] = Field(None, description="Arguments for the tool, if any.")
+    args: Optional[dict[str, Any]] = None
+
 
 
 class Task(BaseModel):
     title: str = Field(..., min_length=5, description="The title of the task.")
-    steps: list[Step] = Field(..., description="List of steps executed in the task.")
+    steps: List[Step] = Field(..., description="List of steps executed in the task.")
 
 class BuildRequestResponse(BaseModel):
     goal: str
-    workflow: list[Task]
+    workflow: List[Task]
 
 class StepOutput(BaseModel):
     status: str 
-    output: Optional[str] = None
+    output: Optional[Any] = None
     error: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
@@ -48,12 +49,12 @@ class StepOutput(BaseModel):
 
 class TaskResult(BaseModel):
     title: str
-    step_results: list[StepOutput]
+    step_results: List[StepOutput]
 
 
 class ExecutionResult(BaseModel):
     goal: str
-    results: list[TaskResult]
+    results: List[TaskResult]
     status: str  # DONE | FAILED
 
 
@@ -165,19 +166,24 @@ async def ping():
     return {"ok": True}
 
 SYSTEM = (
-    'You are a workflow planner. '
-    'Return STRICT JSON ONLY: {"goal": string, "workflow": '
-    '[{"title": string, "steps": [{"description": string}]}]}'
+    'You are a workflow planner. Return STRICT JSON ONLY: '
+    '{"goal": string, "workflow": ['
+    '{"title": string, '
+    '"steps": ['
+      '{"description": string, "tool": string (optional), "args": object (optional)}'
+    ']}]}'
 )
+
 
 async def run_step(step: Step) -> StepOutput:
     started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    args = step.args or {}
     try:
-        if step.tool == "http_get":
+        if args.get("tool") == "http_get":
             url = step.args.get("url")
             result = await tool_http_get(url)
             output = f"Fetched {result['type']} data."
-        elif step.tool == "python_eval":
+        elif args.get("tool") == "python_eval":
             expr = step.args.get("expression")
             result = await tool_python_eval(expr)
             output = f"Evaluated expression with result: {result['result']}"
@@ -222,7 +228,7 @@ async def task_execute(plan: BuildRequestResponse):
         if result.status != "SUCCESS":
             break  # Stop on first failure
         task_results.append(TaskResult(title=step.title, step_results=step_results))
-    return BuildRequestResponse(goal=plan.goal, workflow=task_results)
+    return ExecutionResult(goal=plan.goal, workflow=task_results)
 
 
 
