@@ -45,7 +45,7 @@ class StepOutput(BaseModel):
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     tool_used: Optional[str] = None
-    tool_args: Optional[dict[str]] = None
+    tool_args: Optional[dict[str, Any]] = None
 
 class TaskResult(BaseModel):
     title: str
