@@ -223,9 +223,6 @@ async def task_execute(plan: BuildRequestResponse):
             break  # Stop on first failure
         task_results.append(TaskResult(title=step.title, step_results=step_results))
     return BuildRequestResponse(goal=plan.goal, workflow=task_results)
-    
-
-
 
 
 
