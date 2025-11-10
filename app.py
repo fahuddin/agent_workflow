@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+from .db import init_db, start_run, finish_run, create_task_row, insert_step_row
 
 load_dotenv()
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
