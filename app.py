@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from .db import init_db, start_run, finish_run, create_task_row, insert_step_row
+from db import init_db, start_run, finish_run, create_task_row, insert_step_row
 
 load_dotenv()
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
@@ -20,14 +20,12 @@ model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 app = FastAPI(title="Build Workflow API", version="1.0.0")
 
+init_db()
+
 class BuildRequest(BaseModel):
     goal: str = Field(..., min_length=5, description="The build goal to be executed.")
 
-class Step(BaseModel):
-    description: str = Field(..., min_length=5, description="The step executed.")
-    tool: Optional[str] = Field(None, description="The tool used in this step, if any.")
-    args: Optional[dict[str, Any]] = None
-
+from models import Step, StepOutput
 
 
 class Task(BaseModel):
@@ -223,6 +221,7 @@ async def step_execute(step: Step):
 
 @app.post("/task-execute", response_model=ExecutionResult)
 async def task_execute(plan: BuildRequestResponse):
+    run_id = start_run(plan)
     """
     Execute all tasks in the provided workflow plan sequentially.
     Args:
@@ -231,10 +230,12 @@ async def task_execute(plan: BuildRequestResponse):
         ExecutionResult: The result of executing all tasks, including step outputs and overall status.
     """
     task_results = []
-    for task in plan.workflow:
+    for task_idx, task in enumerate(plan.workflow):
+        task_id = create_task_row(run_id, task.title, task_idx)
         step_results = []
-        for step in task.steps:
+        for step_idx, step in enumerate(task.steps):
             result = await run_step(step)
+            insert_step_row(task_id, step_idx, step, result)
             step_results.append(result)
             if result.status != "SUCCESS":
                 break  # Stop on first failure

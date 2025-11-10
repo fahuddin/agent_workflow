@@ -1,7 +1,7 @@
 import json, time
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field, create_engine, Session, select
-from app import Step, StepOutput
+from models import Step, StepOutput
 
 DB_URL = "sqlite:///./runs.db"
 engine = create_engine(DB_URL, echo=False)
